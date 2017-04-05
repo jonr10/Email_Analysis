@@ -1,0 +1,192 @@
+---
+title: "Exploring Emails"
+author: "Jonathan Roberts"
+date: "7 April 2017"
+output: 
+    html_notebook: default
+    html_document: default
+---
+
+#Get up and running
+##Global RMarkdown Parameters
+Are set here
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Install the R markdown packages and library
+
+```{r message = FALSE, warning = TRUE}
+libraries <- c("rmarkdown")
+
+#UNCOMMENT TO INSTALL PACKAGES
+#lapply(libraries, install.packages)
+lapply(libraries, library, character.only = TRUE)
+```
+
+
+## Working Directory: 
+Set up where you are working and what is in the directory and what objects you have
+ 
+```{r}
+
+# SET THE WORKING DIRECTORY
+setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
+dir()
+ls()
+
+```
+
+#Assignment: Part 1 & 2
+
+
+#Playing Around with Email Data
+
+Long term aim might be to do:
+topic modelling and see how the changes over time
+LSA/clustering and see how that changes over time
+Maybe doing that sort of thing when passing a set of users over to it
+
+Another area to explore might be linking to other people's data and having some network diagrams perhaps.
+
+Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
+
+
+
+##Write in the data and have a look at it
+
+```{r}
+
+raw_data <- read.csv("../SensitiveData/2017_sent_emails.CSV", colClasses = "character")
+str(raw_data)
+summary(raw_data)
+class(raw_data)
+colnames(raw_data)
+raw_data[,6]
+
+#outcome[, 11] <- as.numeric(outcome[, 11])
+## You may get a warning about NAs being introduced; that is okay
+
+```
+
+
+```{r}
+
+best <- function(state,outcome){
+  
+  ##Read in the data
+  outcomes <- read.csv("hospital_data/outcome-of-care-measures.csv", colClasses = "character")
+
+  ##Set the columns where the data is - and the master list of conditions
+  conditions<-data.frame( c("heart attack","heart failure","pneumonia"),c(11,17,23))
+
+  #find out if the call is valid
+  state_test<-is.na(match(state,outcomes$State)) ## returns TRUE for an ERROR
+  condition_test<- is.na(match(outcome,conditions[,1])) ## returns TRUE for an ERROR
+  valid_call<-condition_test | state_test ## returns TRUE for an ERROR
+
+  ##TODO - WRITE THE STOP LINE TO EXIT THE FUNCTION
+  if (valid_call == TRUE) {
+      stop("Data was wrong") 
+      }
+
+  
+  
+  #Make my data numeric
+  
+  #data<-conditions[,2]
+  ####outcomes[,data]<-as.numeric(outcomes[,data]) ##TODO - why doesn't this work??
+  outcomes[,11]<-as.numeric(outcomes[,11])
+  outcomes[,17]<-as.numeric(outcomes[,17])  
+  outcomes[,23]<-as.numeric(outcomes[,23])
+  
+  # SPLIT BY STATE: THIS IS QUITE RESOURCE INTENSIVE - MIGHT BE BEST NOT TO 'FILTER' ON STATE NAME.
+  outcome_by_state<-split(outcomes, outcomes$State)
+  #PUL OUT THE SELECTED STATE DAATA AS A DATA FRAME
+  state_df<-outcome_by_state[[state]]
+  
+  #READY TO 'SORT' - ORDER SEEMS TO BE THE BEST...
+  cond<-conditions[match(outcome,conditions[,1]),2]  
+  order_by_MR<-state_df[order(state_df[,cond],state_df[,2]),]
+  order_by_MR[1,2]
+  
+}
+
+  best("TX","heart failure")
+
+```
+
+#Sandbox: Part 1 &2
+
+##Write in the data
+
+```{r}
+
+outcome <- read.csv("hospital_data/outcome-of-care-measures.csv", colClasses = "character")
+head(outcome)
+str(outcome)
+summary(outcome)
+class(outcome)
+colnames(outcome)
+outcome[,11]
+ncol(outcome)
+nrow(outcome)
+outcome[, 11] <- as.numeric(outcome[, 11])
+## You may get a warning about NAs being introduced; that is okay
+hist(outcome[, 11])
+head(outcome)
+
+```
+
+## Do the main bit of ordering and finding number 1
+```{r}
+#Where is the data?
+heart_attack<-outcome[,11]
+
+outcome[,17]<-as.numeric(outcome[,17])
+heart_failure<-outcome[,17]
+hist(outcome[, 17])
+
+outcome[,23]<-as.numeric(outcome[,23])
+pneumonia<-outcome[,23]
+hist(outcome[, 23])
+
+
+# SPLIT BY STATE: THIS IS QUITE RESOURCE INTENSIVE - MIGHT BE BEST NOT TO SPLIT AND 'FILTER' ON STATE NAME.
+outcome_by_state<-split(outcome, outcome$State)
+class(outcome_by_state)
+str(outcome_by_state)
+#PUL OUT THE SELECTED STATE DAATA AS A DATA FRAME
+class(outcome_by_state$AK)
+ak_df<-outcome_by_state$AK
+ak_df
+
+#READY TO 'SORT' - ORDER SEEMS TO BE THE BEST...
+
+order_by_MR<-ak_df[order(ak_df[,11],ak_df[,2]),]
+order_by_MR[1,]
+
+```
+
+##Do the error trapping
+```{r}
+#find out if we are one of the states
+
+state<-"AK"
+condition<-"heart attack"
+conditions<-data.frame( c("heart attack","heart failure","pneumonia"),c(11,17,23))
+
+state_test<-is.na(match(state,outcomes$State)) ## returns TRUE for an ERROR
+condition_test<- is.na(match(condition,conditions[,1])) ## returns TRUE for an ERROR
+
+valid_call<-condition_test | state_test ## returns TRUE for an ERROR
+
+if (valid_call == True) {print("You entering something incorrectly")}
+
+
+
+```
+
+
+
