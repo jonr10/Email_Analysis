@@ -24,3 +24,42 @@ lapply(libraries, install.packages)
 lapply(libraries, library, character.only = TRUE)
 ```
 
+## Working Directory: 
+Set up where you are working and what is in the directory and what objects you have
+ 
+```{r}
+
+# SET THE WORKING DIRECTORY
+setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
+dir()
+ls()
+
+```
+
+#Assignment: Part 1 & 2
+
+
+#Playing Around with Email Data
+Shot term aim will be to have a function where you send it a person/email adress and you can 
+Long term aim might be to do:
+topic modelling and see how the changes over time
+LSA/clustering and see how that changes over time
+Maybe doing that sort of thing when passing a set of users over to it
+
+Another area to explore might be linking to other people's data and having some network diagrams perhaps.
+
+Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
+
+
+
+##Write in the data and have a look at it
+
+```{r}
+
+raw_data <- read.csv("../SensitiveData/2017_sent_emails.CSV", colClasses = "character")
+str(raw_data)
+summary(raw_data)
+class(raw_data)
+colnames(raw_data)
+raw_data[,6]
+
