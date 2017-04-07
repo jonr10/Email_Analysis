@@ -1,0 +1,26 @@
+---
+title: "Email_Analysis"
+author: "Jonathan Roberts"
+date: "7 April 2017"
+output: html_document
+---
+
+#Get up and running
+##Global RMarkdown Parameters
+Are set here
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##Install the R markdown packages and library
+
+```{r message = FALSE, warning = TRUE}
+libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr")
+
+#UNCOMMENT TO INSTALL PACKAGES
+lapply(libraries, install.packages)
+lapply(libraries, library, character.only = TRUE)
+```
+
