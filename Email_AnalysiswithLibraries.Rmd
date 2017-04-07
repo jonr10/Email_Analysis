@@ -63,3 +63,37 @@ class(raw_data)
 colnames(raw_data)
 raw_data[,6]
 
+```
+
+
+##Pull out relevant subsets of the data
+Write a function that receives the rawdata and an email address and send back the raw data for that person, and possible just the email text and not all the rest of the data.
+
+First time round probably do some loose search on whether they were one of the people emailed, maybe a function like contains - although this isn't an r thing.
+
+```{r}
+
+individual_emails<-function(source_data, text_column, name = "Osama", name_column){
+  #take in the source_data
+  #look for the person's name
+  #filter the sourcedata on that name
+  #return the text column
+}
+
+##uncomment the following line when ready to call the function
+text_to_analyse <- individual_emails(raw_data,2,5)
+
+
+```
+
+
+##Pass to Sam's special code
+```{r}
+
+
+
+```
+
+
+
+
