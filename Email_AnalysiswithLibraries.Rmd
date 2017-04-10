@@ -169,30 +169,33 @@ mostcommon <- function(text_df,n=1,x=20){
 
 ##Set the loop to go around who is emailing you
 
-TODO: this is tricky as we haven't defined this yet - so i will not use the who information but just pull out the bigrams for the whole corpus.
+TODO: The rbind process is inefficient accroding to Robin, so probably want to do this is a slightly different way to speed up in due course.
+
+NOTE: The code requires you to input whose name you are looking for, this could be in an interface in future.
+
 
 ```{r}
 
 ####Actual work####
 
-#Now we start with the results for question 25 and then rbind iteratively
-#through all the other questions 24 to 1, for both words and bigrams.
-
-#input_data<-raw_data
-sent_to<-c("Rahman", "Sam", "Mike")
+#Set up a vector of people you want to look for in your email.
+sent_to<-c("Rahman", "Driver", "Slinger")
 sent_to[3]
 class(sent_to)
 
+# loop around all the people calling a function to filter relevant emails then 
+# send to commonWords & commonBigrams functions
 for (i in 1:length(sent_to)){
         
         if (i==1){ 
                 input_data<-individual_emails(raw_data, who=sent_to[i])
                 commonWords <- input_data %>% mostcommon( x=50)
-                commonBigrams <- input_data %>% mostcommon(n=2, x=50)
-
+                commonBigrams <- input_data %>% mostcommon(n=2, x=50) %>% cbind(sent_to[i])
         }
         else {
-                print(sent_to[i])
+                input_data<-individual_emails(raw_data, who=sent_to[i])
+                commonWords <- input_data %>% mostcommon( x=50) %>% rbind(commonWords)
+                commonBigrams <- input_data %>% mostcommon(n=2, x=50) %>% cbind(sent_to[i]) %>% rbind(commonBigrams)
         }
 }
 
@@ -204,7 +207,14 @@ write.csv(commonBigrams,"../SensitiveData/commonBigrams.csv")
 
 ```
 
+##Can we plot a few things please
 
+```{r}
+
+plot(commonBigrams$n )
+
+
+```
 
 
 
