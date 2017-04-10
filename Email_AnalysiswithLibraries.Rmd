@@ -63,8 +63,16 @@ raw_data <- read.csv("../SensitiveData/2017_sent_emails.CSV", colClasses = "char
 str(raw_data)
 summary(raw_data)
 class(raw_data)
+#rename the columns of the text and recipients
 colnames(raw_data)
+colnames(raw_data)[2]<-"email"
+colnames(raw_data)[6]<-"who"
+colnames(raw_data)
+
 raw_data[,6]
+class(raw_data[,6])
+
+charmatch("Wyatt, Ross",raw_data[,6])
 
 ```
 
@@ -76,7 +84,7 @@ First time round probably do some loose search on whether they were one of the p
 
 ```{r}
 
-individual_emails<-function(source_data, text_column, name = "Osama", name_column){
+individual_emails<-function(source_data, text_column, name = "Mike", name_column){
   #take in the source_data
   #look for the person's name
   #filter the sourcedata on that name
@@ -84,19 +92,65 @@ individual_emails<-function(source_data, text_column, name = "Osama", name_colum
 }
 
 ##uncomment the following line when ready to call the function
-text_to_analyse <- individual_emails(raw_data,2,5)
+#text_to_analyse <- individual_emails(raw_data,2,5)
 
+#TODO: note that charmatch doesn't work
 
 ```
 
 
-##Pass to Sam's special code
+## Calculate common words and bigrams
+This function gives the most common single words or bigrams not including stopwords.
+It takes a dataframe as an argument, which must have a column called "email" that is
+the answers to the question of interest, and one called "who"" that looks at who you are sending to.
+
+
 ```{r}
 
 
+###HELPER FUNCTIONS###
+
+
+mostcommon <- function(text_df,n=1,x=20){
+  if(n==1){
+    #manipulate the data so that each word has its own row
+    tidy_Qdf<- text_df %>% unnest_tokens(word,email,to_lower=TRUE)
+    #remove stopwords
+    clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)
+    #count the occurrences of each word, sort by the number of occurrences, and take the top x
+    top_x <- (clean_Qdf %>% count(word,sort=TRUE))[1:x,]
+  }
+  else if(n==2){
+    #manipulate the data so that each bigram has its own row
+    tidy_Qdf<- text_df %>% unnest_tokens(bigram,email,to_lower=TRUE,token="ngrams",n=2)
+    #separate bigrams into individual words
+    bigrams_separated <- tidy_Qdf %>% separate(bigram, c("word1", "word2"), sep = " ")
+    #remove cases where one of the words is a stopword
+    bigrams_filtered <- bigrams_separated %>%
+      filter(!word1 %in% stop_words$word) %>%
+      filter(!word2 %in% stop_words$word)
+    
+    #count the occurrences of word pairs, sort by the number of occurrences, and take the top x
+    top_x <- as.data.frame((bigrams_filtered %>% count(word1, word2, sort = TRUE))[1:x,])
+    
+    #rejoin the words back into bigrams
+    top_x$phrase <- sapply(1:x,
+                           function(x)
+                             paste(top_x[x,]$word1,top_x[x,]$word2))
+    #only keep the bigrams
+    top_x <- top_x[,!(names(top_x) %in% c("word1","word2"))]
+  }
+  who<-rep(text_df$who,x)
+  return(cbind(top_x,who))
+}
+
 
 ```
 
+
+##Set the loop to go around who is emailing you
+
+TODO: this is tricky as we haven't defined this yet - so i will no use the who function, just pull out the bigrams for the whole corpus.
 
 
 
