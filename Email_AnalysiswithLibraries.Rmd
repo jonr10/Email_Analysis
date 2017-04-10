@@ -159,7 +159,7 @@ mostcommon <- function(text_df,n=1,x=20){
     #only keep the bigrams
     top_x <- top_x[,!(names(top_x) %in% c("word1","word2"))]
   }
-  who<-rep(text_df$who,x)
+  who<-rep(text_df$who[1],x)
   return(cbind(top_x,who))
 }
 
@@ -179,21 +179,23 @@ TODO: this is tricky as we haven't defined this yet - so i will not use the who 
 #through all the other questions 24 to 1, for both words and bigrams.
 
 #input_data<-raw_data
-sent_to<-c("Ross", "Sam", "Mike")
+sent_to<-c("Rahman", "Sam", "Mike")
 sent_to[3]
 class(sent_to)
 
 for (i in 1:length(sent_to)){
         
         if (i==1){ 
-        print(sent_to[i])
+                input_data<-individual_emails(raw_data, who=sent_to[i])
+                commonWords <- input_data %>% mostcommon( x=50)
+                commonBigrams <- input_data %>% mostcommon(n=2, x=50)
+
         }
-        else {print(sent_to[i])}
+        else {
+                print(sent_to[i])
+        }
 }
 
-input_data<-individual_emails(raw_data, who=sent_to[3])
-commonWords <- input_data %>% mostcommon( x=50)
-commonBigrams <- input_data %>% mostcommon(n=2, x=50)
 
 #and write out
 write.csv(commonWords,"../SensitiveData/commonWords.csv")
