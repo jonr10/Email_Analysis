@@ -85,13 +85,24 @@ Write a function that receives the rawdata and an email address and send back th
 
 First time round probably do some loose search on whether they were one of the people emailed, maybe a function like contains - although this isn't an r thing.
 
+This function needs your data to have a 'who' column that it 'filters'.
+
 ```{r}
 
-individual_emails<-function(source_data, text_column, name = "Mike", name_column){
-  #take in the source_data
-  #look for the person's name
-  #filter the sourcedata on that name
-  #return the text column
+
+##TODO: this should be able to pass more than one person, ie. a vector or names and return.
+## It needs to be 'OR' for all of the names that you pass. But either here of later you need to split them out so that you have the length of the vector and can loop around it.
+## I think you do that bit elsewhere, where you call the whole function, then just call this bit one name at a time...
+
+##TODO: this needs to be more robust to loewer case etc
+
+individual_emails<-function(source_data, who = "Ross"){
+        
+        #vector to take the instances where the match is true
+        v<-grepl(who, source_data$who)
+        #filter on matches
+        person_data<-(source_data[v,])
+        return(person_data)
 }
 
 ##uncomment the following line when ready to call the function
@@ -99,12 +110,15 @@ individual_emails<-function(source_data, text_column, name = "Mike", name_column
 
 #TODO: note that charmatch doesn't work
 
+sam<-individual_emails(raw_data)
+
+
 ```
 
 
 ## Calculate common words and bigrams
 This function gives the most common single words or bigrams not including stopwords.
-It takes a dataframe as an argument, which must have a column called "email" that is
+It takes a dataframe as an argument, which must have a column called "Subject" that is
 the answers to the question of interest, and one called "who"" that looks at who you are sending to.
 
 
@@ -113,11 +127,12 @@ the answers to the question of interest, and one called "who"" that looks at who
 
 ###HELPER FUNCTIONS###
 
+## TODO: i want to be able to call to $email or $Subject in the defintion of the function, but can't do this in the obvious way.
 
 mostcommon <- function(text_df,n=1,x=20){
   if(n==1){
     #manipulate the data so that each word has its own row
-    tidy_Qdf<- text_df %>% unnest_tokens(word,email,to_lower=TRUE)
+    tidy_Qdf<- text_df %>% unnest_tokens(word,Subject,to_lower=TRUE)
     #remove stopwords
     clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)  
     clean_Qdf <- clean_Qdf %>% anti_join(email_stopwords)
@@ -126,7 +141,7 @@ mostcommon <- function(text_df,n=1,x=20){
   }
   else if(n==2){
     #manipulate the data so that each bigram has its own row
-    tidy_Qdf<- text_df %>% unnest_tokens(bigram,email,to_lower=TRUE,token="ngrams",n=2)
+    tidy_Qdf<- text_df %>% unnest_tokens(bigram,Subject,to_lower=TRUE,token="ngrams",n=2)
     #separate bigrams into individual words
     bigrams_separated <- tidy_Qdf %>% separate(bigram, c("word1", "word2"), sep = " ")
     #remove cases where one of the words is a stopword
@@ -163,8 +178,12 @@ TODO: this is tricky as we haven't defined this yet - so i will not use the who 
 
 #Now we start with the results for question 25 and then rbind iteratively
 #through all the other questions 24 to 1, for both words and bigrams.
-commonWords <- raw_data %>% mostcommon( x=50)
-commonBigrams <- raw_data %>% mostcommon(n=2, x=50)
+
+#input_data<-raw_data
+input_data<-individual_emails(raw_data)
+
+commonWords <- input_data %>% mostcommon( x=50)
+commonBigrams <- input_data %>% mostcommon(n=2, x=50)
 
 #and write out
 write.csv(commonWords,"../SensitiveData/commonWords.csv")
