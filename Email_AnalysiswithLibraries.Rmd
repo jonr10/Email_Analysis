@@ -54,7 +54,6 @@ Another area to explore might be linking to other people's data and having some 
 Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
 
 
-
 ##Write in the data and have a look at it
 
 ```{r}
@@ -179,9 +178,7 @@ NOTE: The code requires you to input whose name you are looking for, this could 
 ####Actual work####
 
 #Set up a vector of people you want to look for in your email.
-sent_to<-c("Rahman", "Driver", "Slinger")
-sent_to[3]
-class(sent_to)
+sent_to<-c("Ross")
 
 # loop around all the people calling a function to filter relevant emails then 
 # send to commonWords & commonBigrams functions
@@ -189,13 +186,13 @@ for (i in 1:length(sent_to)){
         
         if (i==1){ 
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon( x=50)
-                commonBigrams <- input_data %>% mostcommon(n=2, x=50) %>% cbind(sent_to[i])
+                commonWords <- input_data %>% mostcommon( x=20)
+                commonBigrams <- input_data %>% mostcommon(n=2, x=20) %>% cbind(sent_to[i])
         }
         else {
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon( x=50) %>% rbind(commonWords)
-                commonBigrams <- input_data %>% mostcommon(n=2, x=50) %>% cbind(sent_to[i]) %>% rbind(commonBigrams)
+                commonWords <- input_data %>% mostcommon( x=20) %>% rbind(commonWords)
+                commonBigrams <- input_data %>% mostcommon(n=2, x=20) %>% cbind(sent_to[i]) %>% rbind(commonBigrams)
         }
 }
 
@@ -209,9 +206,13 @@ write.csv(commonBigrams,"../SensitiveData/commonBigrams.csv")
 
 ##Can we plot a few things please
 
+Well barplot is a bit sh1t. 
+
 ```{r}
 
-plot(commonBigrams$n )
+#plot(commonBigrams$`sent_to[i]`, commonBigrams$n)
+barplot(commonBigrams$n, names.arg = commonBigrams$phrase, horiz = TRUE)
+
 
 
 ```
