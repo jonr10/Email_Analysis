@@ -24,6 +24,7 @@ libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval"
 
 #UNCOMMENT TO INSTALL PACKAGES
 lapply(libraries, install.packages)
+
 lapply(libraries, library, character.only = TRUE)
 ```
 
@@ -206,13 +207,19 @@ write.csv(commonBigrams,"../SensitiveData/commonBigrams.csv")
 
 ##Can we plot a few things please
 
-Well barplot is a bit sh1t. 
+This only plots for one person. 
+TODO: Add functionality that plots for more than one person. Could do by splitting and selecting one person, or i guess by multiple charts...
 
 ```{r}
 
 #plot(commonBigrams$`sent_to[i]`, commonBigrams$n)
-barplot(commonBigrams$n, names.arg = commonBigrams$phrase, horiz = TRUE)
+#Well barplot is a bit sh1t. 
+#barplot(commonBigrams$n, names.arg = commonBigrams$phrase, horiz = TRUE)
 
+
+
+ggplot(commonBigrams, aes(x = phrase, y = n)) + geom_bar(stat = "identity") +
+  xlab("Terms") + ylab("Count") + coord_flip()
 
 
 ```
