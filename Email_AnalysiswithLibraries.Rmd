@@ -60,10 +60,13 @@ Ultimately i'd like to get something which might be a jonbot and suggest respons
 ```{r}
 
 raw_data <- read.csv("../SensitiveData/2017_sent_emails.CSV", colClasses = "character")
-str(raw_data)
-summary(raw_data)
+email_stopwords <- read.csv("../SensitiveData/email_stopwords.CSV", colClasses = "character")
+
+#Have a look at the data
 class(raw_data)
-#rename the columns of the text and recipients
+class(email_stopwords)
+
+#rename the columns of the text and recipients so that goes into functions further down
 colnames(raw_data)
 colnames(raw_data)[2]<-"email"
 colnames(raw_data)[6]<-"who"
@@ -116,7 +119,8 @@ mostcommon <- function(text_df,n=1,x=20){
     #manipulate the data so that each word has its own row
     tidy_Qdf<- text_df %>% unnest_tokens(word,email,to_lower=TRUE)
     #remove stopwords
-    clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)
+    clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)  
+    clean_Qdf <- clean_Qdf %>% anti_join(email_stopwords)
     #count the occurrences of each word, sort by the number of occurrences, and take the top x
     top_x <- (clean_Qdf %>% count(word,sort=TRUE))[1:x,]
   }
@@ -140,8 +144,9 @@ mostcommon <- function(text_df,n=1,x=20){
     #only keep the bigrams
     top_x <- top_x[,!(names(top_x) %in% c("word1","word2"))]
   }
-  who<-rep(text_df$who,x)
-  return(cbind(top_x,who))
+  #who<-rep(text_df$who,x)
+  #return(cbind(top_x,who))
+        return(top_x)
 }
 
 
@@ -150,7 +155,25 @@ mostcommon <- function(text_df,n=1,x=20){
 
 ##Set the loop to go around who is emailing you
 
-TODO: this is tricky as we haven't defined this yet - so i will no use the who function, just pull out the bigrams for the whole corpus.
+TODO: this is tricky as we haven't defined this yet - so i will not use the who information but just pull out the bigrams for the whole corpus.
+
+```{r}
+
+####Actual work####
+
+#Now we start with the results for question 25 and then rbind iteratively
+#through all the other questions 24 to 1, for both words and bigrams.
+commonWords <- raw_data %>% mostcommon( x=50)
+commonBigrams <- raw_data %>% mostcommon(n=2, x=50)
+
+#and write out
+write.csv(commonWords,"../SensitiveData/commonWords.csv")
+write.csv(commonBigrams,"../SensitiveData/commonBigrams.csv")
+
+
+```
+
+
 
 
 
