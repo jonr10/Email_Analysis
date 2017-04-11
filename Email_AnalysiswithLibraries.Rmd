@@ -20,11 +20,10 @@ knitr::opts_chunk$set(echo = TRUE)
 ##Install the R markdown packages and library
 
 ```{r message = FALSE, warning = TRUE}
-libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr")
+libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr","ggplot")
 
 #UNCOMMENT TO INSTALL PACKAGES
-lapply(libraries, install.packages)
-
+#lapply(libraries, install.packages)
 lapply(libraries, library, character.only = TRUE)
 ```
 
@@ -35,31 +34,43 @@ Set up where you are working and what is in the directory and what objects you h
 
 # SET THE WORKING DIRECTORY
 setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
-dir()
-ls()
+#dir()
+#ls()
 
 ```
 
-#Assignment: Part 1 & 2
 
+#Analysing Outlook email data
+##Short term aims
+###Person by person
+Shot term aim will be to have a function where you send it a person/email adress and it will anaylse your interaction with them: Probably by doing something like:
+*Most popular words and biGrams
+*Topic Modelling
 
-#Playing Around with Email Data
-Shot term aim will be to have a function where you send it a person/email adress and you can 
-Long term aim might be to do:
-topic modelling and see how the changes over time
-LSA/clustering and see how that changes over time
+As part of this it would be useful to get basic lists of people that you email.
+
+###Corpus
+It might be interesting to do some LSA on all your emails and see if it draws out groups of people that you interact with, a different way of looking a network
+
+*topic modelling and see how the changes over time
+*LSA/clustering and see how that changes over time
 Maybe doing that sort of thing when passing a set of users over to it
 
+###Networks
 Another area to explore might be linking to other people's data and having some network diagrams perhaps.
 
+###jonbot
 Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
 
-
+#Some Code
 ##Write in the data and have a look at it
+I've put the data into a separate folder so that i don't git it.
+This bit pulls the data and renames a few key columns. This code should work with the default way that outlook pushes data out to .csv files BUT i have not done any checking or error trapping so this will break and/or give odd results if data comes out from Outlook in a different format.
 
 ```{r}
-
+#this is the csv that outlook spits out through it's export function. 
 raw_data <- read.csv("../SensitiveData/2017_sent_emails.CSV", colClasses = "character")
+#this is a list of stopwords specific to my emails, e.g. things that appear in my signature.
 email_stopwords <- read.csv("../SensitiveData/email_stopwords.CSV", colClasses = "character")
 
 #Have a look at the data
@@ -72,27 +83,23 @@ colnames(raw_data)[2]<-"email"
 colnames(raw_data)[6]<-"who"
 colnames(raw_data)
 
+
 raw_data[,6]
 class(raw_data[,6])
-
-charmatch("Wyatt, Ross",raw_data[,6])
 
 ```
 
 
 ##Pull out relevant subsets of the data
-Write a function that receives the rawdata and an email address and send back the raw data for that person, and possible just the email text and not all the rest of the data.
+This function takes a name of a person and returns all the rows in the data frame where there is a 'rough' match in the people you sent emails to.
 
-First time round probably do some loose search on whether they were one of the people emailed, maybe a function like contains - although this isn't an r thing.
+This function needs your data to have a 'who' column that it 'filters' on the name you provide.
 
-This function needs your data to have a 'who' column that it 'filters'.
+The search uses grepl which is not that robust for this purpose. for example 'sam' finds "Osama"" but not "Sam".
 
 ```{r}
 
-
-##TODO: this should be able to pass more than one person, ie. a vector or names and return.
-## It needs to be 'OR' for all of the names that you pass. But either here of later you need to split them out so that you have the length of the vector and can loop around it.
-## I think you do that bit elsewhere, where you call the whole function, then just call this bit one name at a time...
+#i've design this function to only accept one name and call it further down as part of a for function so i can give it lots of people to analyse at once. I guess this bit could accept a character vector.
 
 ##TODO: this needs to be more robust to loewer case etc
 
@@ -105,11 +112,6 @@ individual_emails<-function(source_data, who = "Ross"){
         return(person_data)
 }
 
-##uncomment the following line when ready to call the function
-#text_to_analyse <- individual_emails(raw_data,2,5)
-
-#TODO: note that charmatch doesn't work
-
 sam<-individual_emails(raw_data, who="Mike")
 
 
@@ -119,11 +121,11 @@ sam<-individual_emails(raw_data, who="Mike")
 ## Calculate common words and bigrams
 This function gives the most common single words or bigrams not including stopwords.
 It takes a dataframe as an argument, which must have a column called "Subject" that is
-the answers to the question of interest, and one called "who"" that looks at who you are sending to.
+the text of interest, and one called "who"" that looks at who you are sending to.
 
+Note: by going through a changing the two places "subject" is written with "emails" it will do the analysis on the text of the emails instead of the subject line. 
 
 ```{r}
-
 
 ###HELPER FUNCTIONS###
 
@@ -167,7 +169,8 @@ mostcommon <- function(text_df,n=1,x=20){
 ```
 
 
-##Set the loop to go around who is emailing you
+##Call the functions to do the analysis for a vector of names
+Write the name(s) of the people who's email you want to analyse, then it calls the functions and pushes the results out to .csv files.
 
 TODO: The rbind process is inefficient accroding to Robin, so probably want to do this is a slightly different way to speed up in due course.
 
@@ -187,12 +190,12 @@ for (i in 1:length(sent_to)){
         
         if (i==1){ 
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon( x=20)
+                commonWords <- input_data %>% mostcommon( x=20) %>% cbind(sent_to[i])
                 commonBigrams <- input_data %>% mostcommon(n=2, x=20) %>% cbind(sent_to[i])
         }
         else {
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon( x=20) %>% rbind(commonWords)
+                commonWords <- input_data %>% mostcommon( x=20) %>% cbind(sent_to[i]) %>% rbind(commonWords)
                 commonBigrams <- input_data %>% mostcommon(n=2, x=20) %>% cbind(sent_to[i]) %>% rbind(commonBigrams)
         }
 }
