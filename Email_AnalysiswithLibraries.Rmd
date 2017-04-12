@@ -339,7 +339,7 @@ TODO: make the clean function neater and more robust
 
 #read in questions
 raw_data <- read.csv(file, stringsAsFactors = F) #, colClasses = "character")
-questionsVec <- raw_data$Subject
+questionsVec <- raw_data$Body
 questionsVec[825]
 #----is.na(questionsVec)
 #make sure it's in utf-8 format
@@ -349,8 +349,8 @@ questionsVec <- iconv(questionsVec,to="utf-8-mac", sub="byte")
 #questionsVec <- enc2utf8(questionsVec)
 
 #questionsVec[is.na(questionsVec)]
-questionsVec<-questionsVec[1:35]
-questionsVec
+#questionsVec<-questionsVec[1:200]
+#questionsVec
 
 
 ##TODO: this is a summer lazy and inelegant work around, not tenable in the long term as it strips out content
@@ -365,13 +365,24 @@ PQCorp <- Corpus(VectorSource(questionsVec))
 #Stem the corpus
 PQCorp.stems <- tm_map(cleanCorpus(PQCorp),stemDocument)
 
+
+
 class(PQCorp)
 
 #Create the term-document matrix. For each term in each document we assign a score based on the
 #inverse frequency of the appearance of that term in documents in the corpus, normalised for the
 #document length (in some sense), and zero if the term is absent from the document entirely.
 #Details can be seen by inspecting the help documentation for the weightSMART function.
-tdm<-TermDocumentMatrix(PQCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
+null_tdm<-TermDocumentMatrix(PQCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
+
+
+##TOD): think about what happens becasue you've stripped out documents, and vectors won't line up anymore...
+colTotals <- apply(null_tdm, 2, sum)
+tdm<-null_tdm[,colTotals>0]
+#which(null_tdm[,colTotals>0])
+
+null_docs<-which(colTotals==0)
+questionsVec<-questionsVec[which(colTotals>0)]
 
 
 #Creat the latent semantic space. The idea is that it creates a basis of variation, like a PCA, and
@@ -393,7 +404,10 @@ hier<-hclust(as.dist(diss),method = "complete")
 k <- 20
 klusters <- cutree(hier,k)
 #this summarises the top 12 terms per cluster using the summarise function from above.
+
+
 ##TODO: we have no m again
+m<-as.matrix(tdm)
 
 topDozen <- data.frame(
   cluster=unlist(lapply(seq(1,k),function(x)rep(x,12))),
