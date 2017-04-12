@@ -298,7 +298,7 @@ stopwordList <- c(stopwords())
 #a function to clean a corpus of text, making sure of the encoding, removing punctuation, putting it
 #all in lower case, stripping white space, and removing stopwords.
 cleanCorpus <- function(corp) {
-  corp <-tm_map(corp, content_transformer(function(x) iconv(x, to='UTF-8-MAC', sub='byte')))
+  corp <-tm_map(corp, content_transformer(function(x) iconv(x, to='UTF-8-MAC', sub="byte")))
   toSpace <- content_transformer(function(x, pattern) { return (gsub(pattern, ' ', x))})
   corp <- tm_map(corp, toSpace, '-')
   corp <- tm_map(corp, toSpace, '’')
@@ -339,13 +339,20 @@ TODO: make the clean function neater and more robust
 
 #read in questions
 raw_data <- read.csv(file, stringsAsFactors = F) #, colClasses = "character")
-questionsVec <- raw_data$Body
+questionsVec <- raw_data$Subject
+questionsVec[825]
 #----is.na(questionsVec)
 #make sure it's in utf-8 format
 ##When this introduces NA's then it breaks the standard hclust approach. 
 ##This introduces lots of NAs for emails and a few for the subject
 questionsVec <- iconv(questionsVec,to="utf-8-mac", sub="byte")
-questionsVec[is.na(questionsVec)]
+#questionsVec <- enc2utf8(questionsVec)
+
+#questionsVec[is.na(questionsVec)]
+questionsVec<-questionsVec[1:35]
+questionsVec
+
+
 ##TODO: this is a summer lazy and inelegant work around, not tenable in the long term as it strips out content
 #questionsVec<-questionsVec[is.na(questionsVec)]
 ```
@@ -366,6 +373,7 @@ class(PQCorp)
 #Details can be seen by inspecting the help documentation for the weightSMART function.
 tdm<-TermDocumentMatrix(PQCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
 
+
 #Creat the latent semantic space. The idea is that it creates a basis of variation, like a PCA, and
 #allows you to cut down the number of dimensions you need. Here I've determined the number of dimensions
 #such that all of them contribute an s-value of at least 1 (the 'Kaiser-Criterion').
@@ -382,7 +390,7 @@ hier<-hclust(as.dist(diss),method = "complete")
 
 #We choose 1000 to be the number of clusters into which we divide our set of questions.
 #See the appendix for some sort of reasoning behind this.
-k <- 75
+k <- 20
 klusters <- cutree(hier,k)
 #this summarises the top 12 terms per cluster using the summarise function from above.
 ##TODO: we have no m again
