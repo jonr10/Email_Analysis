@@ -250,7 +250,7 @@ library(LSAfun)
 # NLP: identifying similar emails.
 
 This does the burdensome analysis needed to run Latent Semantic Analysis on the set of emails.
-The set itself is generated above, and can be done per person(s) or for the whole corpus
+The set itself is generated above, and can be done per person(s) or for the whole corpus. By person probably not that interesting or relevant. Might be interesting to which groups of people you talk to about a particular cluster.
 
 
 ##General code commenting: to be removed
@@ -340,34 +340,28 @@ TODO: make the clean function neater and more robust
 #read in questions
 raw_data <- read.csv(file, stringsAsFactors = F) #, colClasses = "character")
 questionsVec <- raw_data$Body
-questionsVec[825]
-#----is.na(questionsVec)
+
 #make sure it's in utf-8 format
 ##When this introduces NA's then it breaks the standard hclust approach. 
-##This introduces lots of NAs for emails and a few for the subject
+##This introduces lots of NAs for emails and a few for the subject, the sub argument sorts this out.
 questionsVec <- iconv(questionsVec,to="utf-8-mac", sub="byte")
-#questionsVec <- enc2utf8(questionsVec)
 
 #questionsVec[is.na(questionsVec)]
 #questionsVec<-questionsVec[1:200]
 #questionsVec
 
 
-##TODO: this is a summer lazy and inelegant work around, not tenable in the long term as it strips out content
-#questionsVec<-questionsVec[is.na(questionsVec)]
-```
-
-##Start making the corpus and doing the NLP
-
-```{r}
 #Create the corpus
 PQCorp <- Corpus(VectorSource(questionsVec))
 #Stem the corpus
 PQCorp.stems <- tm_map(cleanCorpus(PQCorp),stemDocument)
 
+```
 
+##Make the tdm and then clean out the documents that had empty entries
+THis needs you to clean the tdm, the text vector and the raw data so that when you put everythingn back together then documents line up
 
-class(PQCorp)
+```{r}
 
 #Create the term-document matrix. For each term in each document we assign a score based on the
 #inverse frequency of the appearance of that term in documents in the corpus, normalised for the
@@ -375,15 +369,23 @@ class(PQCorp)
 #Details can be seen by inspecting the help documentation for the weightSMART function.
 null_tdm<-TermDocumentMatrix(PQCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
 
+#Clean out the empty documents (columns) from the TDM
 
-##TOD): think about what happens becasue you've stripped out documents, and vectors won't line up anymore...
 colTotals <- apply(null_tdm, 2, sum)
 tdm<-null_tdm[,colTotals>0]
 #which(null_tdm[,colTotals>0])
 
+#Clean out the same document from questionsVec so that still works when you put everything back together
 null_docs<-which(colTotals==0)
 questionsVec<-questionsVec[which(colTotals>0)]
 
+#clean oyt the same documents from the raw data
+clean_data<-raw_data[which(colTotals>0),]
+```
+
+##Do the LSA
+
+```{r}
 
 #Creat the latent semantic space. The idea is that it creates a basis of variation, like a PCA, and
 #allows you to cut down the number of dimensions you need. Here I've determined the number of dimensions
