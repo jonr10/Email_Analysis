@@ -420,36 +420,39 @@ topDozen <- data.frame(
 ```
 
 ##save and output data
+
+TODO: There is definitely something wrong about the way things line up. There emails in cluster 17 do not correspond to the top dozen words. 
+TODO: there are also blank words that get returned in the top dozen which suggests an issue. Maybe with the stemming maybe with a miss-alignement of vectors...
+
+
 ```{r}
 
 #### SAVING ####
 
 #Save the R output to be loaded in to R when Tableau is running
-save(tdm, file='tdm.rda')
-save(lsaOut,file='lsaOut.rda')
-save(klusters,file='klusters.rda')
+save(tdm, file='../SensitiveData/tdm.rda')
+save(lsaOut,file='../SensitiveData/lsaOut.rda')
+save(klusters,file='../SensitiveData/klusters.rda')
 
 #Save data to be directly loaded in to Tableau
 
-#The questions and their data (including cluster)
+#The emails and their data (including cluster)
 savedf <- data.frame(
-  Question_ID = aPQ$Question_ID,
-  Question_Text = aPQ$Question_Text,
-  Answer_Text = aPQ$Answer_Text,
-  Question_MP = aPQ$Question_MP,
-  MP_Constituency = aPQ$MP_Constituency,
-  Answer_MP = aPQ$Answer_MP,
-  Date = aPQ$Date,
-  Answer_Date = aPQ$Answer_Date,
-  Corrected_Date = aPQ$Corrected_Date,
+  subject = clean_data$Subject,
+  boby = clean_data$Body,
+  to = clean_data$To...Name.,
+  cc = clean_data$CC...Name.,
   Cluster = klusters,
   stringsAsFactors = FALSE)
-write.csv(savedf,'MoJallPQsforTableau.csv')
+write.csv(savedf,'../SensitiveData/EmailsforTableau.csv')
 
 #The information about the clusters
-write.csv(topDozen,'topDozen.csv')
+write.csv(topDozen,"../SensitiveData/topDozen.csv")
+
+```
 
 
+```{r}
 ##### APPENDIX #####
 
 #Here we see how many clusters is a good number for our data. We calculate the
@@ -459,19 +462,19 @@ write.csv(topDozen,'topDozen.csv')
 #'silhouettewidths.rda' and 'medianpercluster.rda' files. Otherwise you will
 #have to regenerate the value running the code.
 
-load(file='silhouettewidths.rda')
-load(file='medianpercluster.rda')
+#load(file='silhouettewidths.rda')
+#load(file='medianpercluster.rda')
 
 #if you want to regenerate the data run the following
-#ksilwidths <- sapply(seq(2,4000), function(x) mean(silhouette(cutree(hier,x),distn)[,3]))
+ksilwidths <- sapply(seq(2,4000), function(x) mean(silhouette(cutree(hier,x),distn)[,3]))
 #if you want to save it
-#save(ksilwidths,file='silhouettewidths.rda')
-#medianNumPerCluster <- function(hierarch,k){
-#  klusters <- cutree(hierarch,k)
-#  median(sapply(seq(1,k), function(x) length(which(klusters == x))))
-#}
-#meds <- sapply(seq(2,4000),function(x) medianNumPerCluster(hier,x))
-#save(meds,file='medianpercluster.rda')
+save(ksilwidths,file='silhouettewidths.rda')
+medianNumPerCluster <- function(hierarch,k){
+  klusters <- cutree(hierarch,k)
+  median(sapply(seq(1,k), function(x) length(which(klusters == x))))
+}
+meds <- sapply(seq(2,4000),function(x) medianNumPerCluster(hier,x))
+save(meds,file='medianpercluster.rda')
 
 plot(ksilwidths, type="l")
 which.max(ksilwidths)
@@ -489,6 +492,10 @@ meds[1000]
 #median and silhouette and maximising it (although then the function definition is still
 #arbitary).
 
+
+```
+
+```{r}
 
 ```
 
