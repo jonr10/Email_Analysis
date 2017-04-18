@@ -7,6 +7,11 @@ output:
   html_document: default
 ---
 
+## TODO on the basic stuff
+* Break out and chart all the people who i email
+* ...
+
+
 #Get up and running
 ##Global RMarkdown Parameters
 Are set here
@@ -92,13 +97,12 @@ is.na(raw_data$Body)
 ```
 
 
-
 ##Pull out relevant subsets of the data
 This function takes a name of a person and returns all the rows in the data frame where there is a 'rough' match in the people you sent emails to.
 
 This function needs your data to have a 'who' column that it 'filters' on the name you provide.
 
-The search uses grepl which is not that robust for this purpose. for example 'sam' finds "Osama"" but not "Sam".
+The search uses grepl which is not that robust for this purpose. It is o.k. though as by forcing to lower case and using \\b then you remove the sam -> Osama problem. I have introduced the Sam !-> Samuel problem though so perhaps remove the second \\b. Or just do some work on splitting out all the emails addresses.
 
 ```{r}
 
@@ -233,24 +237,33 @@ ggplot(commonBigrams, aes(x = phrase, y = n)) + geom_bar(stat = "identity") +
 ##Analysing who you email
 A lazy way to do this is to call for bigrams for the whole who column. 
 
-```{r}
-install.packages("data.table")
-install.packages("tm")
-install.packages("lsa")
-install.packages("cluster")
-install.packages("LSAfun")
-
-library(data.table)
-library(tm)
-library(lsa)
-library(cluster)
-library(LSAfun)
-
-```
 # NLP: identifying similar emails.
 
 This does the burdensome analysis needed to run Latent Semantic Analysis on the set of emails.
 The set itself is generated above, and can be done per person(s) or for the whole corpus. By person probably not that interesting or relevant. Might be interesting to which groups of people you talk to about a particular cluster.
+
+
+##Install the R markdown packages and library
+
+```{r message = FALSE, warning = TRUE, include=FALSE}
+libraries2 <- c("data.table", "tm", "lsa", "cluster", "LSAfun")
+
+#UNCOMMENT TO INSTALL PACKAGES
+#lapply(libraries2, install.packages)
+lapply(libraries2, library, character.only = TRUE)
+```
+
+## Working Directory: 
+Set up where you are working and what is in the directory and what objects you have
+ 
+```{r include=FALSE}
+
+# SET THE WORKING DIRECTORY
+setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
+#dir()
+#ls()
+
+```
 
 
 ##General code commenting: to be removed
@@ -265,10 +278,10 @@ The set itself is generated above, and can be done per person(s) or for the whol
 # Results of a clustering (saved as kluster.rda)
 
 #It also saves two .csv files which are then directly loaded into Tableau as data:
-# All the data for XXs, and the cluster that each belongs to (AllXXsForTableau.csv)
+# All the data for emailss, and the cluster that each belongs to (AllemailsForTableau.csv)
 # The top dozen words for each cluster (topDozen.csv)
 
-#To use, just write in the file name of the .csv containing the XXs and run the code.
+#To use, just write in the file name of the .csv containing the emails and run the code.
 
 ```
 
@@ -293,7 +306,7 @@ TODO: Could and should tidy up the cleaning approach, and add in email_stopwords
 #a list of stopwords to be removed from the PQs to avoid false similarities on the grounds
 #of questions containing these words
 stopwordList <- c(stopwords())
-##TODO: NEED TO ADD IN MY EMAIL STOP WORDS - JUST ADDING IN THE STOPWORDS VECTOR DOESN'T WORK, just needs to be the right syntx i expect
+##TODO: NEED TO ADD IN MY EMAIL STOP WORDS - JUST ADDING IN THE STOPWORDS VECTOR DOESN'T WORK, just needs to be the right syntax i expect
 
 #a function to clean a corpus of text, making sure of the encoding, removing punctuation, putting it
 #all in lower case, stripping white space, and removing stopwords.
@@ -352,9 +365,9 @@ questionsVec <- iconv(questionsVec,to="utf-8-mac", sub="byte")
 
 
 #Create the corpus
-PQCorp <- Corpus(VectorSource(questionsVec))
+emailCorp <- Corpus(VectorSource(questionsVec))
 #Stem the corpus
-PQCorp.stems <- tm_map(cleanCorpus(PQCorp),stemDocument)
+emailCorp.stems <- tm_map(cleanCorpus(emailCorp),stemDocument)
 
 ```
 
@@ -367,7 +380,7 @@ THis needs you to clean the tdm, the text vector and the raw data so that when y
 #inverse frequency of the appearance of that term in documents in the corpus, normalised for the
 #document length (in some sense), and zero if the term is absent from the document entirely.
 #Details can be seen by inspecting the help documentation for the weightSMART function.
-null_tdm<-TermDocumentMatrix(PQCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
+null_tdm<-TermDocumentMatrix(emailCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
 
 #Clean out the empty documents (columns) from the TDM
 
@@ -421,7 +434,7 @@ topDozen <- data.frame(
 
 ##save and output data
 
-TODO: There is definitely something wrong about the way things line up. There emails in cluster 17 do not correspond to the top dozen words. 
+TODO: There is definitely something wrong about the way things line up. The emails in cluster 17 do not correspond to the top dozen words. 
 TODO: there are also blank words that get returned in the top dozen which suggests an issue. Maybe with the stemming maybe with a miss-alignement of vectors...
 
 
