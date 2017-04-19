@@ -9,7 +9,7 @@ output:
 
 ## TODO on the basic stuff
 * Break out and chart all the people who i email
-* ...
+* Remove calendar invites
 
 
 #Get up and running
@@ -292,6 +292,9 @@ setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
 #PARAMETERS
 ##TODO
 file <- "../SensitiveData/2017_sent_emails.CSV"
+#this is a list of stopwords specific to my emails, e.g. things that appear in my signature.
+email_stopwords <- read.csv("../SensitiveData/email_stopwords.CSV", colClasses = "character")
+email_v<-as.vector(email_stopwords[,1])
 
 ```
 
@@ -305,9 +308,10 @@ TODO: Could and should tidy up the cleaning approach, and add in email_stopwords
 
 #a list of stopwords to be removed from the PQs to avoid false similarities on the grounds
 #of questions containing these words
-stopwordList <- c(stopwords())
-##TODO: NEED TO ADD IN MY EMAIL STOP WORDS - JUST ADDING IN THE STOPWORDS VECTOR DOESN'T WORK, just needs to be the right syntax i expect
+stopwordList <- c(stopwords(),email_v)
 
+##TODO: NEED TO ADD IN MY EMAIL STOP WORDS - JUST ADDING IN THE STOPWORDS VECTOR DOESN'T WORK, just needs to be the right syntax i expect
+class(stopwords())
 #a function to clean a corpus of text, making sure of the encoding, removing punctuation, putting it
 #all in lower case, stripping white space, and removing stopwords.
 cleanCorpus <- function(corp) {
@@ -352,7 +356,7 @@ TODO: make the clean function neater and more robust
 
 #read in questions
 raw_data <- read.csv(file, stringsAsFactors = F) #, colClasses = "character")
-questionsVec <- raw_data$Body
+questionsVec <- raw_data$Subject
 
 #make sure it's in utf-8 format
 ##When this introduces NA's then it breaks the standard hclust approach. 
@@ -452,7 +456,7 @@ save(klusters,file='../SensitiveData/klusters.rda')
 #The emails and their data (including cluster)
 savedf <- data.frame(
   subject = clean_data$Subject,
-  boby = clean_data$Body,
+  body = clean_data$Body,
   to = clean_data$To...Name.,
   cc = clean_data$CC...Name.,
   Cluster = klusters,
