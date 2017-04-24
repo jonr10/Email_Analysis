@@ -1,0 +1,304 @@
+---
+title: "Email_Analysis"
+author: "Jonathan Roberts"
+date: "7 April 2017"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+## TODO on the basic stuff
+* Break out and chart all the people who i email
+* Remove calendar invites
+
+
+#Get up and running
+##Global RMarkdown Parameters
+Are set here
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# NLP: identifying similar emails.
+
+This does the burdensome analysis needed to run Latent Semantic Analysis on the set of emails.
+The set itself is generated above, and can be done per person(s) or for the whole corpus. By person probably not that interesting or relevant. Might be interesting to which groups of people you talk to about a particular cluster.
+
+
+##Install the R markdown packages and library
+
+```{r message = FALSE, warning = TRUE, include=FALSE}
+libraries2 <- c("data.table", "tm", "lsa", "cluster", "LSAfun")
+
+#UNCOMMENT TO INSTALL PACKAGES
+#lapply(libraries2, install.packages)
+lapply(libraries2, library, character.only = TRUE)
+```
+
+## Working Directory: 
+Set up where you are working and what is in the directory and what objects you have
+ 
+```{r include=FALSE}
+
+# SET THE WORKING DIRECTORY
+setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
+#dir()
+#ls()
+
+```
+
+
+##General code commenting: to be removed
+
+```{r}
+
+
+#This creates and saves the following R objects, so that they can be loaded in to an R script
+#run in the background for Tableau:
+# Latent Semantic Analysis space (saved as lsaOut.rda)
+# Text-Document Matrix (saved as tdm.rda)
+# Results of a clustering (saved as kluster.rda)
+
+#It also saves two .csv files which are then directly loaded into Tableau as data:
+# All the data for emailss, and the cluster that each belongs to (AllemailsForTableau.csv)
+# The top dozen words for each cluster (topDozen.csv)
+
+#To use, just write in the file name of the .csv containing the emails and run the code.
+
+```
+
+##Set the source file
+
+
+```{r}
+#PARAMETERS
+##TODO
+file <- "../SensitiveData/2017_sent_emails.CSV"
+#this is a list of stopwords specific to my emails, e.g. things that appear in my signature.
+email_stopwords <- read.csv("../SensitiveData/email_stopwords.CSV", colClasses = "character")
+email_v<-as.vector(email_stopwords[,1])
+
+```
+
+
+##A Couple of functions
+
+TODO: Could and should tidy up the cleaning approach, and add in email_stopwords. I have done this before so can steal that code.
+```{r}
+
+#FUNCTIONS
+
+#a list of stopwords to be removed from the PQs to avoid false similarities on the grounds
+#of questions containing these words
+stopwordList <- c(stopwords(),email_v)
+
+##TODO: NEED TO ADD IN MY EMAIL STOP WORDS - JUST ADDING IN THE STOPWORDS VECTOR DOESN'T WORK, just needs to be the right syntax i expect
+class(stopwords())
+#a function to clean a corpus of text, making sure of the encoding, removing punctuation, putting it
+#all in lower case, stripping white space, and removing stopwords.
+cleanCorpus <- function(corp) {
+  corp <-tm_map(corp, content_transformer(function(x) iconv(x, to='UTF-8-MAC', sub="byte")))
+  toSpace <- content_transformer(function(x, pattern) { return (gsub(pattern, ' ', x))})
+  corp <- tm_map(corp, toSpace, '-')
+  corp <- tm_map(corp, toSpace, '’')
+  corp <- tm_map(corp, toSpace, '‘')
+  corp <- tm_map(corp, toSpace, '•')
+  corp <- tm_map(corp, toSpace, '”')
+  corp <- tm_map(corp, toSpace, '“')
+  corp <- tm_map(corp,content_transformer(tolower))
+  corp <- tm_map(corp,removePunctuation)
+  corp <- tm_map(corp,stripWhitespace)
+  corp <- tm_map(corp, function(x) removeWords(x,stopwordList))
+}
+
+#a function useful in debugging so you can read a given document in a given corpus easily
+writeDoc <- function(num,corpus){
+  writeLines(as.character(corpus$content[[num]]))
+}
+
+#a function to summarise the top terms of a given cluster
+summarise <- function(clusterNum,matr,totalClusters,hierarchy,numTerms,listOfVectors){
+  clusterSet <- cutree(hierarchy,totalClusters)
+  relevantQs <- matr[,which(clusterSet==clusterNum)]
+  clusterDict <- cleanCorpus(Corpus(VectorSource(listOfVectors[which(clusterSet==clusterNum)])))
+  termsAndSums <- if(is.null(dim(relevantQs))){relevantQs} else rowSums(relevantQs)
+  termsAndSumsN <- termsAndSums[order(termsAndSums,decreasing=T)[1:numTerms]]
+  names(termsAndSumsN) <- stemCompletion(names(termsAndSumsN),clusterDict)
+  termsAndSumsN
+}
+
+```
+
+##Read in the data and clean out stopwords
+TODO: This should be steamlined, basically set strings as factors above and don;t re-call the .csv
+TODO: make the clean function neater and more robust
+
+```{r}
+#SCRIPT
+
+#read in questions
+raw_data <- read.csv(file, stringsAsFactors = F) #, colClasses = "character")
+questionsVec <- raw_data$Subject
+
+#make sure it's in utf-8 format
+##When this introduces NA's then it breaks the standard hclust approach. 
+##This introduces lots of NAs for emails and a few for the subject, the sub argument sorts this out.
+questionsVec <- iconv(questionsVec,to="utf-8-mac", sub="byte")
+
+#questionsVec[is.na(questionsVec)]
+#questionsVec<-questionsVec[1:200]
+#questionsVec
+
+
+#Create the corpus
+emailCorp <- Corpus(VectorSource(questionsVec))
+#Stem the corpus
+emailCorp.stems <- tm_map(cleanCorpus(emailCorp),stemDocument)
+
+```
+
+##Make the tdm and then clean out the documents that had empty entries
+THis needs you to clean the tdm, the text vector and the raw data so that when you put everythingn back together then documents line up
+
+```{r}
+
+#Create the term-document matrix. For each term in each document we assign a score based on the
+#inverse frequency of the appearance of that term in documents in the corpus, normalised for the
+#document length (in some sense), and zero if the term is absent from the document entirely.
+#Details can be seen by inspecting the help documentation for the weightSMART function.
+null_tdm<-TermDocumentMatrix(emailCorp.stems,control =list(weighting = function(x) weightSMART(x, spec = "btc")))
+
+#Clean out the empty documents (columns) from the TDM
+
+colTotals <- apply(null_tdm, 2, sum)
+tdm<-null_tdm[,colTotals>0]
+#which(null_tdm[,colTotals>0])
+
+#Clean out the same document from questionsVec so that still works when you put everything back together
+null_docs<-which(colTotals==0)
+questionsVec<-questionsVec[which(colTotals>0)]
+
+#clean oyt the same documents from the raw data
+clean_data<-raw_data[which(colTotals>0),]
+```
+
+##Do the LSA
+
+```{r}
+
+#Creat the latent semantic space. The idea is that it creates a basis of variation, like a PCA, and
+#allows you to cut down the number of dimensions you need. Here I've determined the number of dimensions
+#such that all of them contribute an s-value of at least 1 (the 'Kaiser-Criterion').
+lsaOut <- lsa(tdm,dims=dimcalc_kaiser())
+#positions of our documents in this latent semantic space.
+posns <-diag(lsaOut$sk) %*% t(lsaOut$dk)
+#distances between documents in this space, based on cosine similarity.
+diss <- 1-cosine(posns)
+
+#a hierarchical clustering. At the moment we only use this to define our clusters,
+#by taking a cut through it at the right stage. There is no doubt more that could
+#be done using the hierarchy.
+hier<-hclust(as.dist(diss),method = "complete")
+
+#We choose 1000 to be the number of clusters into which we divide our set of questions.
+#See the appendix for some sort of reasoning behind this.
+k <- 20
+klusters <- cutree(hier,k)
+#this summarises the top 12 terms per cluster using the summarise function from above.
+
+
+##TODO: we have no m again
+m<-as.matrix(tdm)
+
+topDozen <- data.frame(
+  cluster=unlist(lapply(seq(1,k),function(x)rep(x,12))),
+  word=unlist(lapply(seq(1,k),function(x) names(summarise(x,m,k,hier,12,questionsVec)))),
+  freq=unlist(lapply(seq(1,k),function(x) summarise(x,m,k,hier,12,questionsVec))),
+  row.names = NULL ,stringsAsFactors = F)
+
+```
+
+##save and output data
+
+TODO: There is definitely something wrong about the way things line up. The emails in cluster 17 do not correspond to the top dozen words. 
+TODO: there are also blank words that get returned in the top dozen which suggests an issue. Maybe with the stemming maybe with a miss-alignement of vectors...
+
+
+```{r}
+
+#### SAVING ####
+
+#Save the R output to be loaded in to R when Tableau is running
+save(tdm, file='../SensitiveData/tdm.rda')
+save(lsaOut,file='../SensitiveData/lsaOut.rda')
+save(klusters,file='../SensitiveData/klusters.rda')
+
+#Save data to be directly loaded in to Tableau
+
+#The emails and their data (including cluster)
+savedf <- data.frame(
+  subject = clean_data$Subject,
+  body = clean_data$Body,
+  to = clean_data$To...Name.,
+  cc = clean_data$CC...Name.,
+  Cluster = klusters,
+  stringsAsFactors = FALSE)
+write.csv(savedf,'../SensitiveData/EmailsforTableau.csv')
+
+#The information about the clusters
+write.csv(topDozen,"../SensitiveData/topDozen.csv")
+
+```
+
+
+```{r}
+##### APPENDIX #####
+
+#Here we see how many clusters is a good number for our data. We calculate the
+#silhouette for each clustering - the higher the better. We also calculate the
+#median number of questions per cluster given the total cluster number.
+#If these calculations have already been done you can simply load the
+#'silhouettewidths.rda' and 'medianpercluster.rda' files. Otherwise you will
+#have to regenerate the value running the code.
+
+#load(file='silhouettewidths.rda')
+#load(file='medianpercluster.rda')
+
+#if you want to regenerate the data run the following
+ksilwidths <- sapply(seq(2,4000), function(x) mean(silhouette(cutree(hier,x),distn)[,3]))
+#if you want to save it
+save(ksilwidths,file='silhouettewidths.rda')
+medianNumPerCluster <- function(hierarch,k){
+  klusters <- cutree(hierarch,k)
+  median(sapply(seq(1,k), function(x) length(which(klusters == x))))
+}
+meds <- sapply(seq(2,4000),function(x) medianNumPerCluster(hier,x))
+save(meds,file='medianpercluster.rda')
+
+plot(ksilwidths, type="l")
+which.max(ksilwidths)
+max(ksilwidths)
+meds[which.max(ksilwidths)]
+#you can see that the 'best' number of clusters is around 2668. However, this results in
+#a median of only two questions per cluster, and the silhouette is still pretty small, at ~0.23.
+#So we probably want more questions per cluster on average, particularly as it's not like the
+#clusterings are 'good' anyway. Hence the arbitrary choice of 1000, which gives a silhouette
+#of ~0.161 and a median of 4 questions per cluster.
+ksilwidths[1000]
+meds[1000]
+
+#We might be able to do better than arbitrarily picking 1000 by defining some function of
+#median and silhouette and maximising it (although then the function definition is still
+#arbitary).
+
+
+```
+
+```{r}
+
+```
+
+
+
