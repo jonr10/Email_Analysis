@@ -7,21 +7,15 @@ output:
   html_document: default
 ---
 
-## TODO on the basic stuff
-* Break out and chart all the people who i email
-* Remove calendar invites
-
-
-#Get up and running
-##Global RMarkdown Parameters
-Are set here
+##R basics
+###Global RMarkdown Parameters
 
 ```{r setup, include=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-##Install the R packages and libraries
+###Install the R packages and libraries
 
 ```{r message = FALSE, warning = TRUE, include=FALSE}
 libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr","ggplot2", "wordcloud", "reshape2")
@@ -31,7 +25,7 @@ libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval"
 lapply(libraries, library, character.only = TRUE)
 ```
 
-## Working Directory: 
+### Working Directory: 
 Set up where you are working and what is in the directory and what objects you have
  
 ```{r include=FALSE}
@@ -44,32 +38,13 @@ setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
 ```
 
 
-#Analysing Outlook email data
-##Short term aims
-###Person by person
-Shot term aim will be to have a function where you send it a person/email adress and it will anaylse your interaction with them: Probably by doing something like:
-*Most popular words and biGrams
-*sentiment analysis
-*Topic Modelling
 
-As part of this it would be useful to get basic lists of people that you email.
+#Import data and write functions
 
-###Corpus
-It might be interesting to do some LSA on all your emails and see if it draws out groups of people that you interact with, a different way of looking a network
+I've put the data into a separate folder so that i don't git it - i don't want to push my work emails to a public site!!!
 
-*topic modelling and see how the changes over time
-*LSA/clustering and see how that changes over time
-Maybe doing that sort of thing when passing a set of users over to it
-
-###Networks
-Another area to explore might be linking to other people's data and having some network diagrams perhaps.
-
-###jonbot
-Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
-
-#Some Code
 ##Write in the data and have a look at it
-I've put the data into a separate folder so that i don't git it.
+
 This bit pulls the data and renames a few key columns. This code should work with the default way that outlook pushes data out to .csv files BUT i have not done any checking or error trapping so this will break and/or give odd results if data comes out from Outlook in a different format.
 
 ```{r include=FALSE}
@@ -91,10 +66,8 @@ colnames(raw_data)
 raw_data[,6]
 class(raw_data[,6])
 
-```
+#is.na(raw_data$Body)
 
-```{r include=FALSE}
-is.na(raw_data$Body)
 ```
 
 
@@ -121,7 +94,7 @@ individual_emails<-function(source_data, who = "Ross"){
         return(person_data)
 }
 
-sam<-individual_emails(raw_data, who="Sam")
+#sam<-individual_emails(raw_data, who="Sam")
 
 ```
 
@@ -175,8 +148,8 @@ mostcommon <- function(text_df,n=1,x=20) {
 
 
 
-## Making Tidy data
-Tweaking the approach above so we pull out tidy data with stop wrods removed from a function then after that do stuff to it
+## Function to Make Tidy text data
+Tweaking the approach above so we pull out tidy data with stop words removed from a function then after that do stuff to it
 
 TODO: for some reason this function doesn't allow you to pass "email" or "Subject" as an argument and work in the way that you would expect. 
 
@@ -227,7 +200,7 @@ email_text %>%
   count(word, sentiment, sort = TRUE) %>%
   acast(word ~ sentiment, value.var = "n", fill = 0) %>%
   comparison.cloud(colors = c("#F8766D", "#00BFC4"),
-                   max.words = 100)
+                   max.words = 60)
 
 ```
 
@@ -393,6 +366,30 @@ ggplot(commonBigrams, aes(x = phrase, y = n, fill = who)) + geom_bar(stat = "ide
 #  facet_wrap(~book, ncol = 2, scales = "free_x")
 
 ```
+
+
+#Analysing Outlook email data
+##Short term aims
+###Person by person
+Shot term aim will be to have a function where you send it a person/email adress and it will anaylse your interaction with them: Probably by doing something like:
+*Most popular words and biGrams
+*sentiment analysis
+*Topic Modelling
+
+As part of this it would be useful to get basic lists of people that you email.
+
+###Corpus
+It might be interesting to do some LSA on all your emails and see if it draws out groups of people that you interact with, a different way of looking a network
+
+*topic modelling and see how the changes over time
+*LSA/clustering and see how that changes over time
+Maybe doing that sort of thing when passing a set of users over to it
+
+###Networks
+Another area to explore might be linking to other people's data and having some network diagrams perhaps.
+
+###jonbot
+Ultimately i'd like to get something which might be a jonbot and suggest responses to emails for me...
 
 
 ##Analysing who you email
