@@ -357,6 +357,7 @@ TODO: Add functionality that plots for more than one person. Could do by splitti
 #barplot(commonBigrams$n, names.arg = commonBigrams$phrase, horiz = TRUE)
 
 
+
 ggplot(commonBigrams, aes(x = phrase, y = n, fill = who)) + geom_bar(stat = "identity", show.legend = FALSE) +
   xlab("Terms") + ylab("Count") + coord_flip() +  facet_wrap(~who, ncol = 3, scales = "free_x")
 
@@ -366,6 +367,35 @@ ggplot(commonBigrams, aes(x = phrase, y = n, fill = who)) + geom_bar(stat = "ide
 #  facet_wrap(~book, ncol = 2, scales = "free_x")
 
 ```
+
+#Analysis of who you are emailing
+
+##Experimenting with splitting who
+
+This works as you strsplit then unlist so you get one long character vector. Fine for working out who you email. But loses the link to the original email.
+
+```{r}
+test2<-unlist(strsplit(raw_data$who,";"))
+
+a<-table(test2)
+aa<-sort(a, decreasing = TRUE)
+
+a_df<-as.data.frame(aa)
+a_df
+
+```
+
+
+This keeps the integrity of which rows they people come from but gives you a list which might be a bit annoying when you try to use it in a minute, i.e. cycling through names
+
+```{r}
+raw_data$who
+test<-strsplit(raw_data$who,";")
+class(test)
+head(test)
+
+```
+
 
 
 #Analysing Outlook email data
