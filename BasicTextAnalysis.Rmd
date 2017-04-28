@@ -24,7 +24,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ##Install the R packages and libraries
 
 ```{r message = FALSE, warning = TRUE, include=FALSE}
-libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr","ggplot2")
+libraries <- c("rmarkdown", "tidytext", "magrittr", "dplyr", "tidyr", "lazyeval", "purrr","ggplot2", "wordcloud", "reshape2")
 
 #UNCOMMENT TO INSTALL PACKAGES
 #lapply(libraries, install.packages)
@@ -49,6 +49,7 @@ setwd("/Users/jonathanroberts/Documents/R/Email_Analysis")
 ###Person by person
 Shot term aim will be to have a function where you send it a person/email adress and it will anaylse your interaction with them: Probably by doing something like:
 *Most popular words and biGrams
+*sentiment analysis
 *Topic Modelling
 
 As part of this it would be useful to get basic lists of people that you email.
@@ -97,7 +98,7 @@ is.na(raw_data$Body)
 ```
 
 
-##Pull out relevant subsets of the data
+##Function to Pull out relevant subsets of the data
 This function takes a name of a person and returns all the rows in the data frame where there is a 'rough' match in the people you sent emails to.
 
 This function needs your data to have a 'who' column that it 'filters' on the name you provide.
@@ -125,7 +126,7 @@ sam<-individual_emails(raw_data, who="Sam")
 ```
 
 
-## Calculate common words and bigrams
+## Function to Calculate common words and bigrams
 This function gives the most common single words or bigrams not including stopwords.
 It takes a dataframe as an argument, which must have a column called "Subject" that is
 the text of interest, and one called "who"" that looks at who you are sending to.
@@ -133,9 +134,6 @@ the text of interest, and one called "who"" that looks at who you are sending to
 Note: by going through a changing the two places "subject" is written with "emails" it will do the analysis on the text of the emails instead of the subject line. 
 
 ```{r}
-
-###HELPER FUNCTIONS###
-
 ## TODO: i want to be able to call to $email or $Subject in the defintion of the function, but can't do this in the obvious way.
 
 mostcommon <- function(text_df,n=1,x=20) {
@@ -176,7 +174,162 @@ mostcommon <- function(text_df,n=1,x=20) {
 ```
 
 
-##Call the functions to do the analysis for a vector of names
+
+## Making Tidy data
+Tweaking the approach above so we pull out tidy data with stop wrods removed from a function then after that do stuff to it
+
+TODO: for some reason this function doesn't allow you to pass "email" or "Subject" as an argument and work in the way that you would expect. 
+
+```{r}
+
+tidy_stop_email <- function(text_df) {
+    #manipulate the data so that each word has its own row
+    tidy_Qdf<- text_df %>% unnest_tokens(word,"email",to_lower=TRUE)
+    #remove stopwords
+    clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)  
+    clean_Qdf <- clean_Qdf %>% anti_join(email_stopwords)
+}
+
+tidy_stop_subject <- function(text_df) {
+    #manipulate the data so that each word has its own row
+    tidy_Qdf<- text_df %>% unnest_tokens(word,"Subject",to_lower=TRUE)
+    #remove stopwords
+    clean_Qdf <- tidy_Qdf %>% anti_join(stop_words)  
+    clean_Qdf <- clean_Qdf %>% anti_join(email_stopwords)
+}
+
+
+```
+
+#Text Analysis
+
+##On the whole corpus
+
+###WordCloud all the email text
+```{r}
+
+email_text<-tidy_stop_email(raw_data)
+email_text %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 60))
+
+```
+
+###Sentiment wordcloud all the email text
+It would be rude not to...
+
+```{r}
+
+bing <- get_sentiments("bing")
+
+email_text %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("#F8766D", "#00BFC4"),
+                   max.words = 100)
+
+```
+
+###Look at different emotions using nrc
+```{r}
+nrc <- get_sentiments("nrc")
+nrc_word_counts <- email_text %>%
+  inner_join(nrc) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+nrc_word_counts
+
+```
+
+
+###WordCloud all the Subject line text
+```{r}
+subj_text<-tidy_stop_subject(raw_data)
+subj_text %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 60))
+
+```
+
+
+
+
+
+##Analysis on one person
+Drop their name into the function call, or leave blank for Ross...
+
+```{r}
+# Call the Person (s) that you want
+input_data<-individual_emails(raw_data, "rahman")
+#Make the tidy data using unnest and removing stop words
+
+ind_email_text<-tidy_stop_email(input_data)
+
+top_20 <- (ind_email_text %>% count(word,sort=TRUE))[1:20,]
+```
+
+
+###Wordclouds
+Well why not - it is text analytics after all...
+
+```{r}
+
+ind_email_text %>%
+  count(word) %>%
+  with(wordcloud(word, n, max.words = 80))
+
+```
+
+
+###Sentiment wordcloud
+It would be rude not to...
+
+```{r}
+
+bing <- get_sentiments("bing")
+
+ind_email_text %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("#F8766D", "#00BFC4"),
+                   max.words = 100)
+
+```
+
+
+###Some sentiment analysis
+
+Select a particular 'emotion' in the nrc library
+```{r}
+
+nrc <- get_sentiments("nrc") %>%  filter(sentiment == "trust")
+
+email_text%>%
+  semi_join(nrc) %>%
+  count(word, sort = TRUE)
+
+
+```
+
+Next look at positive and negative using the bing library
+
+```{r}
+bing <- get_sentiments("bing")
+bing_word_counts <- email_text %>%
+  inner_join(bing) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
+
+bing_word_counts
+
+```
+
+
+## Calling BiGrams and writing out data
+
 Write the name(s) of the people who's email you want to analyse, then it calls the functions and pushes the results out to .csv files.
 
 TODO: The rbind process is inefficient accroding to Robin, so probably want to do this is a slightly different way to speed up in due course.
@@ -189,10 +342,9 @@ NOTE: The code requires you to input whose name you are looking for, this could 
 ####Actual work####
 
 #Set up a vector of people you want to look for in your email.
-sent_to<-c("Driver", "Rahman", "Marriott")
+sent_to<-c("Tazzyman", "Wyatt", "Marriott")
 
 # loop around all the people calling a function to filter relevant emails then 
-# send to commonWords & commonBigrams functions
 # the cbind here binds the input search term to what you get back from the function 'mostcommon'
 # which itself includes the some information on who you've been emailing too.
 
@@ -200,54 +352,27 @@ for (i in 1:length(sent_to)){
         
         if (i==1){ 
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon() %>% cbind(sent_to[i])
+                #commonWords <- input_data %>% mostcommon() %>% cbind(sent_to[i])
                 commonBigrams <- input_data %>% mostcommon(n=2) %>% cbind(sent_to[i])
         }
         else {
                 input_data<-individual_emails(raw_data, who=sent_to[i])
-                commonWords <- input_data %>% mostcommon() %>% cbind(sent_to[i]) %>% rbind(commonWords)
+                #commonWords <- input_data %>% mostcommon() %>% cbind(sent_to[i]) %>% rbind(commonWords)
                 commonBigrams <- input_data %>% mostcommon(n=2) %>% cbind(sent_to[i]) %>% rbind(commonBigrams)
         }
 }
 
 
 #and write out
-write.csv(commonWords,"../SensitiveData/commonWords.csv")
+#write.csv(commonWords,"../SensitiveData/commonWords.csv")
 write.csv(commonBigrams,"../SensitiveData/commonBigrams.csv")
 
 
 ```
 
-```{r}
 
 
-nrc <- get_sentiments("bing")
-text_df<- individual_emails(raw_data)
-tidy_email<- text_df %>% unnest_tokens(word,"Subject",to_lower=TRUE)
-
-tidy_email%>%
-  semi_join(nrc) %>%
-  count(word, sort = TRUE)
-
-# filter(book == "Emma") %>%
-
-```
-
-```{r}
-bing <- get_sentiments("bing")
-bing_word_counts <- tidy_email %>%
-  inner_join(bing) %>%
-  count(word, sentiment, sort = TRUE) %>%
-  ungroup()
-
-bing_word_counts
-
-
-```
-
-
-
-##Can we plot a few things please
+##Plot bigrams
 
 This only plots for one person. 
 TODO: Add functionality that plots for more than one person. Could do by splitting and selecting one person, or i guess by multiple charts...
@@ -259,9 +384,13 @@ TODO: Add functionality that plots for more than one person. Could do by splitti
 #barplot(commonBigrams$n, names.arg = commonBigrams$phrase, horiz = TRUE)
 
 
-ggplot(commonBigrams, aes(x = phrase, y = n)) + geom_bar(stat = "identity") +
-  xlab("Terms") + ylab("Count") + coord_flip()
+ggplot(commonBigrams, aes(x = phrase, y = n, fill = who)) + geom_bar(stat = "identity", show.legend = FALSE) +
+  xlab("Terms") + ylab("Count") + coord_flip() +  facet_wrap(~who, ncol = 3, scales = "free_x")
 
+
+#ggplot(janeaustensentiment, aes(index, sentiment, fill = book)) +
+#  geom_bar(stat = "identity", show.legend = FALSE) +
+#  facet_wrap(~book, ncol = 2, scales = "free_x")
 
 ```
 
